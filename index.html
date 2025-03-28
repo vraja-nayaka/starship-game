@@ -1,918 +1,1147 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Space Shooter</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #120028;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #120028;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+      #gameCanvas {
+        width: 600px;
+        height: 800px;
+        position: relative;
+        border: 1px solid #fff;
+        overflow: hidden;
+        background: transparent;
+      }
+      .gradient-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          to bottom,
+          #0a0a39 0px,
+          /* Темно-синий */ #001e80 400px,
+          /* Синий */ #9c9200 800px,
+          /* Светло-синий */ #001e80 1200px,
+          /* Синий */ #0a0a39 1600px /* Темно-синий */
+        );
+        background-size: 100% 1600px;
+        animation: scrollGradient 10s linear infinite;
+        z-index: 0; /* Самый нижний слой */
+      }
+      .background-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url("background1.png");
+        background-size: cover;
+        background-repeat: repeat-y;
+        animation: scrollBackground 20s linear infinite;
+        z-index: 1; /* Поверх градиента */
+      }
+      .game-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2; /* Игровые элементы поверх всего */
+      }
+      @keyframes scrollBackground {
+        0% {
+          background-position-y: 0;
         }
-        #gameCanvas {
-            width: 600px;
-            height: 800px;
-            position: relative;
-            border: 1px solid #fff;
-            overflow: hidden;
-            background: transparent;
+        100% {
+          background-position-y: 1600px;
         }
-        .gradient-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                to bottom,
-                #0a0a39 0px,    /* Темно-синий */
-                #001e80 400px,   /* Синий */
-                #9c9200 800px,   /* Светло-синий */
-                #001e80 1200px,  /* Синий */
-                #0a0a39 1600px   /* Темно-синий */
-            );
-            background-size: 100% 1600px;
-            animation: scrollGradient 10s linear infinite;
-            z-index: 0; /* Самый нижний слой */
+      }
+      @keyframes scrollGradient {
+        0% {
+          background-position-y: 0;
         }
-        .background-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('background1.png');
-            background-size: cover;
-            background-repeat: repeat-y;
-            animation: scrollBackground 20s linear infinite;
-            z-index: 1; /* Поверх градиента */
+        100% {
+          background-position-y: 1600px;
         }
-        .game-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2; /* Игровые элементы поверх всего */
+      }
+      .player {
+        width: 80px;
+        height: 80px;
+        background-image: url("shuttle.png");
+        background-size: cover;
+        position: absolute;
+        border-radius: 5px;
+        filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7));
+        z-index: 3; /* Явно выше фона */
+      }
+      .fire-tail {
+        width: 10px;
+        height: 30px;
+        background: linear-gradient(to bottom, #ff9900, #ff3300, transparent);
+        position: absolute;
+        left: 35px;
+        top: 80px;
+        border-radius: 50% 50% 0 0;
+        animation: flicker 0.1s infinite alternate;
+        filter: drop-shadow(0 0 10px #ff3300);
+        z-index: 3;
+      }
+      @keyframes flicker {
+        0% {
+          transform: scaleY(1);
+          opacity: 0.8;
         }
-        @keyframes scrollBackground {
-            0% { background-position-y: 0; }
-            100% { background-position-y: 1600px; }
+        100% {
+          transform: scaleY(1.2);
+          opacity: 1;
         }
-        @keyframes scrollGradient {
-            0% { background-position-y: 0; }
-            100% { background-position-y: 1600px; }
+      }
+      .bullet {
+        width: 3px;
+        height: 10px;
+        background: rgb(116, 255, 167);
+        position: absolute;
+        border-radius: 3px;
+        z-index: 3;
+      }
+      .enemy-bullet {
+        width: 5px;
+        height: 20px;
+        background: rgb(255, 132, 0);
+        position: absolute;
+        border-radius: 3px;
+        z-index: 3;
+      }
+      .bomb {
+        width: 5px;
+        height: 25px;
+        background: rgb(195, 255, 0);
+        position: absolute;
+        border-radius: 5px;
+        z-index: 3;
+      }
+      .enemy-straight {
+        background-image: url("asteroid.png");
+        background-size: cover;
+        position: absolute;
+        border-radius: 50%;
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+        z-index: 3;
+      }
+      .enemy-arc {
+        width: 60px;
+        height: 60px;
+        background-image: url("sfire.png");
+        background-size: cover;
+        position: absolute;
+        border-radius: 50%;
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+        z-index: 3;
+      }
+      .enemy-zigzag {
+        width: 40px;
+        height: 40px;
+        background-image: url("zigzag.png");
+        background-size: cover;
+        position: absolute;
+        border-radius: 50%;
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
+        z-index: 3;
+      }
+      .energy {
+        width: 30px;
+        height: 30px;
+        background-image: url("energy.png");
+        background-size: cover;
+        position: absolute;
+        border-radius: 50%;
+        filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.7));
+        z-index: 3;
+      }
+      .debris {
+        width: 5px;
+        height: 5px;
+        background: #72eaff;
+        position: absolute;
+        border-radius: 50%;
+        z-index: 3;
+      }
+      .player-debris {
+        width: 6px;
+        height: 6px;
+        background: #fc6124;
+        position: absolute;
+        border-radius: 50%;
+        z-index: 3;
+      }
+      .spark {
+        width: 3px;
+        height: 3px;
+        background: #fff;
+        position: absolute;
+        border-radius: 50%;
+        z-index: 3;
+      }
+      .score-text {
+        position: absolute;
+        color: #00ff00;
+        font-family: Arial, sans-serif;
+        font-size: 40px;
+        font-weight: bold;
+        text-align: center;
+        text-shadow: 0 0 15px #00ff00, 0 0 30px #00ff00, 0 0 45px #00ff00;
+        animation: fadeOut 1s linear forwards;
+        z-index: 3;
+      }
+      .penalty-text {
+        position: absolute;
+        color: #ff4444;
+        font-family: Arial, sans-serif;
+        font-size: 20px;
+        text-align: center;
+        animation: fadeOut 1s linear forwards;
+        z-index: 3;
+      }
+      @keyframes shake {
+        0% {
+          transform: translate(0, 0);
         }
-        .player {
-            width: 80px;
-            height: 80px;
-            background-image: url('shuttle.png');
-            background-size: cover;
-            position: absolute;
-            border-radius: 5px;
-            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7));
-            z-index: 3; /* Явно выше фона */
+        25% {
+          transform: translate(4px, 4px);
         }
-        .fire-tail {
-            width: 10px;
-            height: 30px;
-            background: linear-gradient(to bottom, #ff9900, #ff3300, transparent);
-            position: absolute;
-            left: 35px;
-            top: 80px;
-            border-radius: 50% 50% 0 0;
-            animation: flicker 0.1s infinite alternate;
-            filter: drop-shadow(0 0 10px #ff3300);
-            z-index: 3;
+        50% {
+          transform: translate(-4px, -4px);
         }
-        @keyframes flicker {
-            0% { transform: scaleY(1); opacity: 0.8; }
-            100% { transform: scaleY(1.2); opacity: 1; }
+        75% {
+          transform: translate(4px, -4px);
         }
-        .bullet {
-            width: 3px;
-            height: 10px;
-            background: rgb(116, 255, 167);
-            position: absolute;
-            border-radius: 3px;
-            z-index: 3;
+        100% {
+          transform: translate(0, 0);
         }
-        .enemy-bullet {
-            width: 5px;
-            height: 20px;
-            background: rgb(255, 132, 0);
-            position: absolute;
-            border-radius: 3px;
-            z-index: 3;
+      }
+      @keyframes fadeOut {
+        0% {
+          opacity: 1;
+          transform: translateY(0);
         }
-        .bomb {
-            width: 5px;
-            height: 25px;
-            background: rgb(195, 255, 0);
-            position: absolute;
-            border-radius: 5px;
-            z-index: 3;
+        100% {
+          opacity: 0;
+          transform: translateY(-20px);
         }
-        .enemy-straight {
-            background-image: url('asteroid.png');
-            background-size: cover;
-            position: absolute;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
-            z-index: 3;
-        }
-        .enemy-arc {
-            width: 60px;
-            height: 60px;
-            background-image: url('sfire.png');
-            background-size: cover;
-            position: absolute;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
-            z-index: 3;
-        }
-        .enemy-zigzag {
-            width: 40px;
-            height: 40px;
-            background-image: url('zigzag.png');
-            background-size: cover;
-            position: absolute;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.7));
-            z-index: 3;
-        }
-        .energy {
-            width: 30px;
-            height: 30px;
-            background-image: url('energy.png');
-            background-size: cover;
-            position: absolute;
-            border-radius: 50%;
-            filter: drop-shadow(0 0 8px rgba(0, 255, 0, 0.7));
-            z-index: 3;
-        }
-        .debris {
-            width: 5px;
-            height: 5px;
-            background: #72eaff;
-            position: absolute;
-            border-radius: 50%;
-            z-index: 3;
-        }
-        .player-debris {
-            width: 6px;
-            height: 6px;
-            background: #fc6124;
-            position: absolute;
-            border-radius: 50%;
-            z-index: 3;
-        }
-        .spark {
-            width: 3px;
-            height: 3px;
-            background: #fff;
-            position: absolute;
-            border-radius: 50%;
-            z-index: 3;
-        }
-        .score-text {
-            position: absolute;
-            color: #00ff00;
-            font-family: Arial, sans-serif;
-            font-size: 40px;
-            font-weight: bold;
-            text-align: center;
-            text-shadow: 0 0 15px #00ff00, 0 0 30px #00ff00, 0 0 45px #00ff00;
-            animation: fadeOut 1s linear forwards;
-            z-index: 3;
-        }
-        .penalty-text {
-            position: absolute;
-            color: #ff4444;
-            font-family: Arial, sans-serif;
-            font-size: 20px;
-            text-align: center;
-            animation: fadeOut 1s linear forwards;
-            z-index: 3;
-        }
-        @keyframes shake {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(4px, 4px); }
-            50% { transform: translate(-4px, -4px); }
-            75% { transform: translate(4px, -4px); }
-            100% { transform: translate(0, 0); }
-        }
-        @keyframes fadeOut {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-20px); }
-        }
-        .shaking {
-            animation: shake 0.2s linear;
-        }
-        #score {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            text-align: right;
-            z-index: 3;
-        }
-        #lives {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            gap: 5px;
-            z-index: 3;
-        }
-        .life {
-            width: 40px;
-            height: 40px;
-            background-image: url('heart-red.png');
-            background-size: cover;
-            border-radius: 50%;
-            z-index: 3;
-        }
-        .life.lost {
-            background-image: url('heart-grey.png');
-            background-size: cover;
-        }
-        #gameOver, #startScreen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            font-family: Arial, sans-serif;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-size: 32px;
-            text-align: center;
-            display: none;
-            z-index: 3;
-        }
-        #startScreen {
-            display: block;
-        }
-        #gameOver button, #startScreen button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-        #musicToggle {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            padding: 5px 10px;
-            font-size: 14px;
-            font-family: Arial, sans-serif;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid #fff;
-            border-radius: 5px;
-            cursor: pointer;
-            z-index: 3;
-        }
-        #musicToggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
+      }
+      .shaking {
+        animation: shake 0.2s linear;
+      }
+      #score {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        text-align: right;
+        z-index: 3;
+      }
+      #lives {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 5px;
+        z-index: 3;
+      }
+      .life {
+        width: 40px;
+        height: 40px;
+        background-image: url("heart-red.png");
+        background-size: cover;
+        border-radius: 50%;
+        z-index: 3;
+      }
+      .life.lost {
+        background-image: url("heart-grey.png");
+        background-size: cover;
+      }
+      #gameOver,
+      #startScreen {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        font-family: Arial, sans-serif;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 32px;
+        text-align: center;
+        display: none;
+        z-index: 3;
+      }
+      #startScreen {
+        display: block;
+      }
+      #gameOver button,
+      #startScreen button {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 18px;
+        cursor: pointer;
+      }
+      #musicToggle {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        padding: 5px 10px;
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 3;
+      }
+      #musicToggle:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div id="gameCanvas">
-        <div class="gradient-bg"></div>
-        <div class="background-layer"></div>
-        <div class="game-layer">
-            <div id="score">Bullets: 0<br>Bombs: 0<br>Total: 0<br>Level: 1<br>High Score: 0</div>
-            <div id="lives"></div>
-            <div id="startScreen">
-                <div>Space Shooter<br>Press Start to Begin</div>
-                <button onclick="startGame()">Start Game</button>
-            </div>
-            <div id="gameOver">
-                <div>Game Over<br>Your Score: <span id="finalScore">0</span><br><span id="scoreComparison"></span></div>
-                <button onclick="restartGame()">Start Game</button>
-            </div>
-            <button id="musicToggle" onclick="toggleMusic()">Mute Music</button>
+      <div class="gradient-bg"></div>
+      <div class="background-layer"></div>
+      <div class="game-layer">
+        <div id="score">
+          Bullets: 0<br />Bombs: 0<br />Total: 0<br />Level: 1<br />High Score:
+          0
         </div>
+        <div id="lives"></div>
+        <div id="startScreen">
+          <div>Space Shooter<br />Press Start to Begin</div>
+          <button onclick="startGame()">Start Game</button>
+        </div>
+        <div id="gameOver">
+          <div>
+            Game Over<br />Your Score: <span id="finalScore">0</span><br /><span
+              id="scoreComparison"
+            ></span>
+          </div>
+          <button onclick="restartGame()">Start Game</button>
+        </div>
+        <button id="musicToggle" onclick="toggleMusic()">Mute Music</button>
+      </div>
     </div>
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const gameLayer = document.querySelector('.game-layer');
-        const scoreDisplay = document.getElementById('score');
-        const livesDisplay = document.getElementById('lives');
-        const gameOverDisplay = document.getElementById('gameOver');
-        const startScreenDisplay = document.getElementById('startScreen');
-        const finalScoreDisplay = document.getElementById('finalScore');
-        const scoreComparison = document.getElementById('scoreComparison');
-        const musicToggleButton = document.getElementById('musicToggle');
+      const canvas = document.getElementById("gameCanvas");
+      const gameLayer = document.querySelector(".game-layer");
+      const scoreDisplay = document.getElementById("score");
+      const livesDisplay = document.getElementById("lives");
+      const gameOverDisplay = document.getElementById("gameOver");
+      const startScreenDisplay = document.getElementById("startScreen");
+      const finalScoreDisplay = document.getElementById("finalScore");
+      const scoreComparison = document.getElementById("scoreComparison");
+      const musicToggleButton = document.getElementById("musicToggle");
 
-        const CONFIG = {
-            GAME_WIDTH: 600,
-            GAME_HEIGHT: 800,
-            PLAYER_SIZE: 80,
-            MAX_LIVES: 3,
-            MAX_SPEED: 5,
-            ACCELERATION: 0.5,
-            FRICTION: 0.9,
-            BULLET_INTERVAL: 400,
-            ENEMY_SPAWN_INTERVAL: 1000,
-            ENERGY_SPAWN_INTERVAL: 15000,
-            BULLET_SPEED: 10,
-            ENEMY_BULLET_SPEED: 4,
-            BOOST_DURATION: 10000,
-            SHAKE_DURATION: 300,
-            LEVEL_THRESHOLD_BASE: 10,
-            MAX_DEBRIS: 100,
-            MAX_SPARKS: 15,
-            EXPLOSION_DURATION: 1500
+      const CONFIG = {
+        GAME_WIDTH: 600,
+        GAME_HEIGHT: 800,
+        PLAYER_SIZE: 80,
+        MAX_LIVES: 3,
+        MAX_SPEED: 5,
+        ACCELERATION: 0.5,
+        FRICTION: 0.9,
+        BULLET_INTERVAL: 400,
+        ENEMY_SPAWN_INTERVAL: 1000,
+        ENERGY_SPAWN_INTERVAL: 15000,
+        BULLET_SPEED: 10,
+        ENEMY_BULLET_SPEED: 4,
+        BOOST_DURATION: 10000,
+        SHAKE_DURATION: 300,
+        LEVEL_THRESHOLD_BASE: 10,
+        MAX_DEBRIS: 100,
+        MAX_SPARKS: 15,
+        EXPLOSION_DURATION: 1500,
+      };
+
+      let bulletKills = 0,
+        bombKills = 0,
+        totalScore = 0,
+        gameRunning = false;
+      let playerLives = CONFIG.MAX_LIVES,
+        currentLevel = 1,
+        levelThreshold = CONFIG.LEVEL_THRESHOLD_BASE;
+      let enemySpeedMultiplier = 1,
+        bulletSpeedMultiplier = 1;
+      let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+      let player,
+        playerX,
+        playerY,
+        fireTail,
+        vx = 0,
+        vy = 0;
+      let touchX = null;
+      let touchY = null;
+      let bulletCounter = 0,
+        bulletInterval,
+        enemyInterval,
+        energyInterval;
+      let gameFrameId = null,
+        explosionFrameId = null;
+      const bullets = [],
+        enemyBullets = [],
+        enemies = [],
+        energyItems = [],
+        debris = [],
+        sparks = [];
+      const keys = {};
+
+      const sounds = {
+        laser: { audio: new Audio("laser1.mp3"), volume: 0.5 },
+        bomb: { audio: new Audio("bomb1.mp3"), volume: 0.1 },
+        explode: { audio: new Audio("explode.mp3"), volume: 0.5 },
+        explodeArc: { audio: new Audio("explode-arc.mp3"), volume: 0.9 },
+        bulletHit: { audio: new Audio("bullet-hit.mp3"), volume: 0.4 },
+        explodePlayer: { audio: new Audio("explode-player.mp3"), volume: 0.8 },
+        energyPickup: { audio: new Audio("energy-pickup.mp3"), volume: 0.9 },
+        enemyShot: { audio: new Audio("enemy-shot.mp3"), volume: 0.6 },
+        playerHit: { audio: new Audio("player-hit.mp3"), volume: 0.9 },
+      };
+
+      const backgroundMusic = new Audio("music-theme.mp3");
+      backgroundMusic.loop = true;
+      backgroundMusic.volume = 0.1;
+      let isMusicPlaying = false;
+
+      function playSound(soundKey) {
+        if (sounds[soundKey]) {
+          const sound = sounds[soundKey].audio.cloneNode();
+          sound.volume = sounds[soundKey].volume;
+          sound
+            .play()
+            .catch((error) =>
+              console.error(`Ошибка звука ${soundKey}:`, error)
+            );
+        }
+      }
+
+      function toggleMusic() {
+        isMusicPlaying
+          ? backgroundMusic.pause()
+          : backgroundMusic
+              .play()
+              .catch((error) => console.error("Ошибка музыки:", error));
+        musicToggleButton.textContent = isMusicPlaying
+          ? "Unmute Music"
+          : "Mute Music";
+        isMusicPlaying = !isMusicPlaying;
+      }
+
+      function updateScore() {
+        scoreDisplay.innerHTML = `Bullets: ${bulletKills}<br>Bombs: ${bombKills}<br>Total: ${totalScore}<br>Level: ${currentLevel}<br>High Score: ${highScore}`;
+        if (totalScore >= levelThreshold) {
+          currentLevel++;
+          levelThreshold += CONFIG.LEVEL_THRESHOLD_BASE * currentLevel;
+          enemySpeedMultiplier += 0.1;
+          bulletSpeedMultiplier += 0.1;
+          clearInterval(enemyInterval);
+          enemyInterval = setInterval(() => {
+            if (gameRunning) spawnEnemy();
+          }, CONFIG.ENEMY_SPAWN_INTERVAL / (1 + currentLevel * 0.1));
+          setBulletInterval(
+            CONFIG.BULLET_INTERVAL / (1 + bulletSpeedMultiplier)
+          );
+          showText(
+            `Level ${currentLevel}`,
+            CONFIG.GAME_WIDTH / 2 - 70,
+            CONFIG.GAME_HEIGHT / 2 - 30,
+            "score-text"
+          );
+        }
+      }
+
+      function showText(
+        text,
+        x,
+        y,
+        className,
+        size = className === "score-text" ? 40 : 20
+      ) {
+        const textElement = document.createElement("div");
+        textElement.className = className;
+        textElement.textContent = text;
+        textElement.style.left = x + "px";
+        textElement.style.top = y + "px";
+        textElement.style.fontSize = size + "px";
+        if (className === "score-text") textElement.style.textShadow = "none";
+        gameLayer.appendChild(textElement);
+        setTimeout(() => textElement.remove(), 1000);
+      }
+
+      function updateLives() {
+        livesDisplay.innerHTML = "";
+        for (let i = 0; i < CONFIG.MAX_LIVES; i++) {
+          const life = document.createElement("div");
+          life.className = "life" + (i >= playerLives ? " lost" : "");
+          livesDisplay.appendChild(life);
+        }
+      }
+
+      function initPlayer() {
+        player = document.createElement("div");
+        player.className = "player";
+        playerX = CONFIG.GAME_WIDTH / 2 - CONFIG.PLAYER_SIZE / 2;
+        playerY = CONFIG.GAME_HEIGHT * 0.75;
+        player.style.left = playerX + "px";
+        player.style.top = playerY + "px";
+        gameLayer.appendChild(player);
+
+        fireTail = document.createElement("div");
+        fireTail.className = "fire-tail";
+        player.appendChild(fireTail);
+
+        playerLives = CONFIG.MAX_LIVES;
+        updateLives();
+        vx = vy = 0;
+      }
+
+      document.addEventListener("keydown", (e) => (keys[e.key] = true));
+      document.addEventListener("keyup", (e) => (keys[e.key] = false));
+
+      document.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
+        touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
+      });
+
+      document.addEventListener("touchmove", (e) => {
+        const touch = e.touches[0];
+        touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
+        touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
+      });
+
+      document.addEventListener("touchend", () => {
+        touchX = null;
+        touchY = null;
+      });
+
+      function movePlayer() {
+        if (!gameRunning) return;
+        const halfHeight = CONFIG.GAME_HEIGHT / 2;
+
+        if (keys["ArrowLeft"]) vx -= CONFIG.ACCELERATION;
+        if (keys["ArrowRight"]) vx += CONFIG.ACCELERATION;
+        if (keys["ArrowUp"]) vy -= CONFIG.ACCELERATION;
+        if (keys["ArrowDown"]) vy += CONFIG.ACCELERATION;
+
+        // Добавляем тач-управление
+        if (touchX !== null && touchY !== null) {
+          const dx = touchX - playerX;
+          const dy = touchY - playerY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          if (length > 10) {
+            // Чувствительность
+            vx += (dx / length) * CONFIG.ACCELERATION;
+            vy += (dy / length) * CONFIG.ACCELERATION;
+          }
+        }
+
+        vx = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx));
+        vy = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy));
+        vx *= CONFIG.FRICTION;
+        vy *= CONFIG.FRICTION;
+
+        playerX = Math.max(
+          0,
+          Math.min(CONFIG.GAME_WIDTH - CONFIG.PLAYER_SIZE, playerX + vx)
+        );
+        playerY = Math.max(
+          halfHeight,
+          Math.min(CONFIG.GAME_HEIGHT - CONFIG.PLAYER_SIZE, playerY + vy)
+        );
+        player.style.left = playerX + "px";
+        player.style.top = playerY + "px";
+      }
+
+      function createBullet() {
+        if (!gameRunning) return;
+        bulletCounter++;
+        const isBomb = bulletCounter % 3 === 0;
+        if (isBomb) {
+          const bomb = document.createElement("div");
+          bomb.className = "bomb";
+          bomb.style.left = playerX + 32.5 + "px";
+          bomb.style.top = playerY - 25 + "px";
+          gameLayer.appendChild(bomb);
+          bullets.push({ element: bomb, y: playerY - 25, isBomb: true });
+          playSound("bomb");
+        } else {
+          const bulletLeft = document.createElement("div");
+          bulletLeft.className = "bullet";
+          bulletLeft.style.left = playerX + 10 + "px";
+          bulletLeft.style.top = playerY - 10 + "px";
+          gameLayer.appendChild(bulletLeft);
+          bullets.push({ element: bulletLeft, y: playerY - 10, isBomb: false });
+
+          const bulletRight = document.createElement("div");
+          bulletRight.className = "bullet";
+          bulletRight.style.left = playerX + 67 + "px";
+          bulletRight.style.top = playerY - 10 + "px";
+          gameLayer.appendChild(bulletRight);
+          bullets.push({
+            element: bulletRight,
+            y: playerY - 10,
+            isBomb: false,
+          });
+          playSound("laser");
+        }
+      }
+
+      function setBulletInterval(interval) {
+        clearInterval(bulletInterval);
+        bulletInterval = setInterval(() => {
+          if (gameRunning) createBullet();
+        }, interval);
+      }
+
+      function boostFireRate() {
+        setBulletInterval(CONFIG.BULLET_INTERVAL / 4);
+        setTimeout(
+          () =>
+            setBulletInterval(
+              CONFIG.BULLET_INTERVAL / (1 + bulletSpeedMultiplier)
+            ),
+          CONFIG.BOOST_DURATION
+        );
+      }
+
+      function moveBullets() {
+        if (!gameRunning) return;
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          bullets[i].y -= CONFIG.BULLET_SPEED;
+          bullets[i].element.style.top = bullets[i].y + "px";
+          if (bullets[i].y < 0) {
+            bullets[i].element.remove();
+            bullets.splice(i, 1);
+          }
+        }
+      }
+
+      function createEnemyBullet(enemyX, enemyY) {
+        const bullet = document.createElement("div");
+        bullet.className = "enemy-bullet";
+        const bulletX = enemyX + 30 - 2.5;
+        const bulletY = enemyY + 30 - 5;
+        bullet.style.left = bulletX + "px";
+        bullet.style.top = bulletY + "px";
+        gameLayer.appendChild(bullet);
+
+        const dx = playerX + CONFIG.PLAYER_SIZE / 2 - (enemyX + 30);
+        const dy = playerY + CONFIG.PLAYER_SIZE / 2 - (enemyY + 30);
+        const angle = Math.atan2(dy, dx);
+        const vx = Math.cos(angle) * CONFIG.ENEMY_BULLET_SPEED;
+        const vy = Math.sin(angle) * CONFIG.ENEMY_BULLET_SPEED;
+
+        enemyBullets.push({ element: bullet, x: bulletX, y: bulletY, vx, vy });
+        playSound("enemyShot");
+      }
+
+      function moveEnemyBullets() {
+        if (!gameRunning || !player) return;
+        const playerRect = player.getBoundingClientRect();
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+          const bullet = enemyBullets[i];
+          bullet.x += bullet.vx;
+          bullet.y += bullet.vy;
+          bullet.element.style.left = bullet.x + "px";
+          bullet.element.style.top = bullet.y + "px";
+
+          if (
+            bullet.y > CONFIG.GAME_HEIGHT ||
+            bullet.y < 0 ||
+            bullet.x < 0 ||
+            bullet.x > CONFIG.GAME_WIDTH
+          ) {
+            bullet.element.remove();
+            enemyBullets.splice(i, 1);
+            continue;
+          }
+
+          const bulletRect = bullet.element.getBoundingClientRect();
+          if (
+            playerRect.left < bulletRect.right &&
+            playerRect.right > bulletRect.left &&
+            playerRect.top < bulletRect.bottom &&
+            playerRect.bottom > bulletRect.top
+          ) {
+            bullet.element.remove();
+            enemyBullets.splice(i, 1);
+            handlePlayerHit();
+          }
+        }
+      }
+
+      function spawnEnemy() {
+        if (!gameRunning) return;
+        const enemy = document.createElement("div");
+        const typeRoll = Math.random();
+        let type,
+          className,
+          size = 40;
+        if (typeRoll < 0.33) {
+          type = "straight";
+          className = "enemy-straight";
+          size = Math.floor(Math.random() * 41) + 20;
+          enemy.style.width = size + "px";
+          enemy.style.height = size + "px";
+        } else if (typeRoll < 0.66) {
+          type = "arc";
+          className = "enemy-arc";
+        } else {
+          type = "zigzag";
+          className = "enemy-zigzag";
+        }
+        enemy.className = className;
+
+        const startX = Math.random() * (CONFIG.GAME_WIDTH - size);
+        enemy.style.left = startX + "px";
+        enemy.style.top = "-40px";
+        gameLayer.appendChild(enemy);
+
+        const enemyObj = {
+          element: enemy,
+          type,
+          x: startX,
+          y: -40,
+          angle: 0,
+          hits: 3,
+          rotation: 0,
+          rotationSpeed:
+            (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1),
+          shootInterval:
+            type === "arc"
+              ? setInterval(() => {
+                  if (gameRunning && enemies.includes(enemyObj))
+                    createEnemyBullet(
+                      parseFloat(enemy.style.left),
+                      parseFloat(enemy.style.top)
+                    );
+                }, 1500)
+              : null,
         };
+        enemies.push(enemyObj);
+      }
 
-        let bulletKills = 0, bombKills = 0, totalScore = 0, gameRunning = false;
-        let playerLives = CONFIG.MAX_LIVES, currentLevel = 1, levelThreshold = CONFIG.LEVEL_THRESHOLD_BASE;
-        let enemySpeedMultiplier = 1, bulletSpeedMultiplier = 1;
-        let highScore = parseInt(localStorage.getItem('highScore')) || 0;
-        let player, playerX, playerY, fireTail, vx = 0, vy = 0;
-        let bulletCounter = 0, bulletInterval, enemyInterval, energyInterval;
-        let gameFrameId = null, explosionFrameId = null;
-        const bullets = [], enemyBullets = [], enemies = [], energyItems = [], debris = [], sparks = [];
-        const keys = {};
+      function spawnEnergy() {
+        if (!gameRunning) return;
+        const energy = document.createElement("div");
+        energy.className = "energy";
+        const startX = Math.random() * (CONFIG.GAME_WIDTH - 30);
+        energy.style.left = startX + "px";
+        energy.style.top = "-30px";
+        gameLayer.appendChild(energy);
+        energyItems.push({ element: energy, x: startX, y: -30 });
+      }
 
-        const sounds = {
-            laser: { audio: new Audio('laser1.mp3'), volume: 0.5 },
-            bomb: { audio: new Audio('bomb1.mp3'), volume: 0.1 },
-            explode: { audio: new Audio('explode.mp3'), volume: 0.5 },
-            explodeArc: { audio: new Audio('explode-arc.mp3'), volume: 0.9 },
-            bulletHit: { audio: new Audio('bullet-hit.mp3'), volume: 0.4 },
-            explodePlayer: { audio: new Audio('explode-player.mp3'), volume: 0.8 },
-            energyPickup: { audio: new Audio('energy-pickup.mp3'), volume: 0.9 },
-            enemyShot: { audio: new Audio('enemy-shot.mp3'), volume: 0.6 },
-            playerHit: { audio: new Audio('player-hit.mp3'), volume: 0.9 }
-        };
-
-        const backgroundMusic = new Audio('music-theme.mp3');
-        backgroundMusic.loop = true;
-        backgroundMusic.volume = 0.1;
-        let isMusicPlaying = false;
-
-        function playSound(soundKey) {
-            if (sounds[soundKey]) {
-                const sound = sounds[soundKey].audio.cloneNode();
-                sound.volume = sounds[soundKey].volume;
-                sound.play().catch(error => console.error(`Ошибка звука ${soundKey}:`, error));
-            }
+      function createDebris(x, y, isPlayer = false) {
+        const count = isPlayer ? CONFIG.MAX_DEBRIS : CONFIG.MAX_DEBRIS / 2;
+        const className = isPlayer ? "player-debris" : "debris";
+        const vxRange = isPlayer ? 20 : 12;
+        const vyRange = isPlayer ? 15 : 8;
+        for (let i = 0; i < count && debris.length < CONFIG.MAX_DEBRIS; i++) {
+          const piece = document.createElement("div");
+          piece.className = className;
+          piece.style.left = x + "px";
+          piece.style.top = y + "px";
+          gameLayer.appendChild(piece);
+          debris.push({
+            element: piece,
+            x,
+            y,
+            vx: (Math.random() - 0.5) * vxRange,
+            vy: -Math.random() * vyRange,
+          });
         }
+      }
 
-        function toggleMusic() {
-            isMusicPlaying ? backgroundMusic.pause() : backgroundMusic.play().catch(error => console.error('Ошибка музыки:', error));
-            musicToggleButton.textContent = isMusicPlaying ? 'Unmute Music' : 'Mute Music';
-            isMusicPlaying = !isMusicPlaying;
+      function createSparks(x, y) {
+        for (
+          let i = 0;
+          i < CONFIG.MAX_SPARKS && sparks.length < CONFIG.MAX_SPARKS;
+          i++
+        ) {
+          const spark = document.createElement("div");
+          spark.className = "spark";
+          spark.style.left = x + "px";
+          spark.style.top = y + "px";
+          gameLayer.appendChild(spark);
+          sparks.push({
+            element: spark,
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 6,
+            vy: -Math.random() * 4,
+            lifetime: 20,
+          });
         }
+      }
 
-        function updateScore() {
-            scoreDisplay.innerHTML = `Bullets: ${bulletKills}<br>Bombs: ${bombKills}<br>Total: ${totalScore}<br>Level: ${currentLevel}<br>High Score: ${highScore}`;
-            if (totalScore >= levelThreshold) {
-                currentLevel++;
-                levelThreshold += CONFIG.LEVEL_THRESHOLD_BASE * currentLevel;
-                enemySpeedMultiplier += 0.1;
-                bulletSpeedMultiplier += 0.1;
-                clearInterval(enemyInterval);
-                enemyInterval = setInterval(() => { if (gameRunning) spawnEnemy(); }, CONFIG.ENEMY_SPAWN_INTERVAL / (1 + currentLevel * 0.1));
-                setBulletInterval(CONFIG.BULLET_INTERVAL / (1 + bulletSpeedMultiplier));
-                showText(`Level ${currentLevel}`, CONFIG.GAME_WIDTH / 2 - 70, CONFIG.GAME_HEIGHT / 2 - 30, 'score-text');
-            }
+      function moveDebris() {
+        for (let i = debris.length - 1; i >= 0; i--) {
+          const piece = debris[i];
+          piece.vy += 0.2;
+          piece.x += piece.vx;
+          piece.y += piece.vy;
+          piece.element.style.left = piece.x + "px";
+          piece.element.style.top = piece.y + "px";
+          if (piece.y > CONFIG.GAME_HEIGHT) {
+            piece.element.remove();
+            debris.splice(i, 1);
+          }
         }
+      }
 
-        function showText(text, x, y, className, size = className === 'score-text' ? 40 : 20) {
-            const textElement = document.createElement('div');
-            textElement.className = className;
-            textElement.textContent = text;
-            textElement.style.left = x + 'px';
-            textElement.style.top = y + 'px';
-            textElement.style.fontSize = size + 'px';
-            if (className === 'score-text') textElement.style.textShadow = 'none';
-            gameLayer.appendChild(textElement);
-            setTimeout(() => textElement.remove(), 1000);
+      function moveSparks() {
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const spark = sparks[i];
+          spark.x += spark.vx;
+          spark.y += spark.vy;
+          spark.lifetime--;
+          spark.element.style.left = spark.x + "px";
+          spark.element.style.top = spark.y + "px";
+          if (spark.lifetime <= 0 || spark.y > CONFIG.GAME_HEIGHT) {
+            spark.element.remove();
+            sparks.splice(i, 1);
+          }
         }
+      }
 
-        function updateLives() {
-            livesDisplay.innerHTML = '';
-            for (let i = 0; i < CONFIG.MAX_LIVES; i++) {
-                const life = document.createElement('div');
-                life.className = 'life' + (i >= playerLives ? ' lost' : '');
-                livesDisplay.appendChild(life);
-            }
+      function handlePlayerHit() {
+        playerLives--;
+        updateLives();
+        player.classList.add("shaking");
+        setTimeout(
+          () => player.classList.remove("shaking"),
+          CONFIG.SHAKE_DURATION
+        );
+        if (playerLives > 0) {
+          playSound("playerHit");
+        } else {
+          createDebris(
+            playerX + CONFIG.PLAYER_SIZE / 2,
+            playerY + CONFIG.PLAYER_SIZE / 2,
+            true
+          );
+          playSound("explodePlayer");
+          player.remove();
+          player = null;
+          animateExplosionThenEnd();
         }
+      }
 
-        function initPlayer() {
-            player = document.createElement('div');
-            player.className = 'player';
-            playerX = CONFIG.GAME_WIDTH / 2 - CONFIG.PLAYER_SIZE / 2;
-            playerY = CONFIG.GAME_HEIGHT * 0.75;
-            player.style.left = playerX + 'px';
-            player.style.top = playerY + 'px';
-            gameLayer.appendChild(player);
-
-            fireTail = document.createElement('div');
-            fireTail.className = 'fire-tail';
-            player.appendChild(fireTail);
-
-            playerLives = CONFIG.MAX_LIVES;
-            updateLives();
-            vx = vy = 0;
+      function animateExplosionThenEnd() {
+        console.log("Starting explosion animation");
+        gameRunning = false;
+        if (gameFrameId) {
+          cancelAnimationFrame(gameFrameId);
+          gameFrameId = null;
         }
+        clearInterval(bulletInterval);
+        clearInterval(enemyInterval);
+        clearInterval(energyInterval);
+        enemies.forEach(clearEnemy);
 
-        document.addEventListener('keydown', e => keys[e.key] = true);
-        document.addEventListener('keyup', e => keys[e.key] = false);
-
-        function movePlayer() {
-            if (!gameRunning) return;
-            const halfHeight = CONFIG.GAME_HEIGHT / 2;
-
-            if (keys['ArrowLeft']) vx -= CONFIG.ACCELERATION;
-            if (keys['ArrowRight']) vx += CONFIG.ACCELERATION;
-            if (keys['ArrowUp']) vy -= CONFIG.ACCELERATION;
-            if (keys['ArrowDown']) vy += CONFIG.ACCELERATION;
-
-            vx = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx));
-            vy = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy));
-            vx *= CONFIG.FRICTION;
-            vy *= CONFIG.FRICTION;
-
-            playerX = Math.max(0, Math.min(CONFIG.GAME_WIDTH - CONFIG.PLAYER_SIZE, playerX + vx));
-            playerY = Math.max(halfHeight, Math.min(CONFIG.GAME_HEIGHT - CONFIG.PLAYER_SIZE, playerY + vy));
-            player.style.left = playerX + 'px';
-            player.style.top = playerY + 'px';
-        }
-
-        function createBullet() {
-            if (!gameRunning) return;
-            bulletCounter++;
-            const isBomb = bulletCounter % 3 === 0;
-            if (isBomb) {
-                const bomb = document.createElement('div');
-                bomb.className = 'bomb';
-                bomb.style.left = playerX + 32.5 + 'px';
-                bomb.style.top = (playerY - 25) + 'px';
-                gameLayer.appendChild(bomb);
-                bullets.push({ element: bomb, y: playerY - 25, isBomb: true });
-                playSound('bomb');
-            } else {
-                const bulletLeft = document.createElement('div');
-                bulletLeft.className = 'bullet';
-                bulletLeft.style.left = playerX + 10 + 'px';
-                bulletLeft.style.top = (playerY - 10) + 'px';
-                gameLayer.appendChild(bulletLeft);
-                bullets.push({ element: bulletLeft, y: playerY - 10, isBomb: false });
-
-                const bulletRight = document.createElement('div');
-                bulletRight.className = 'bullet';
-                bulletRight.style.left = playerX + 67 + 'px';
-                bulletRight.style.top = (playerY - 10) + 'px';
-                gameLayer.appendChild(bulletRight);
-                bullets.push({ element: bulletRight, y: playerY - 10, isBomb: false });
-                playSound('laser');
-            }
-        }
-
-        function setBulletInterval(interval) {
-            clearInterval(bulletInterval);
-            bulletInterval = setInterval(() => { if (gameRunning) createBullet(); }, interval);
-        }
-
-        function boostFireRate() {
-            setBulletInterval(CONFIG.BULLET_INTERVAL / 4);
-            setTimeout(() => setBulletInterval(CONFIG.BULLET_INTERVAL / (1 + bulletSpeedMultiplier)), CONFIG.BOOST_DURATION);
-        }
-
-        function moveBullets() {
-            if (!gameRunning) return;
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].y -= CONFIG.BULLET_SPEED;
-                bullets[i].element.style.top = bullets[i].y + 'px';
-                if (bullets[i].y < 0) {
-                    bullets[i].element.remove();
-                    bullets.splice(i, 1);
-                }
-            }
-        }
-
-        function createEnemyBullet(enemyX, enemyY) {
-            const bullet = document.createElement('div');
-            bullet.className = 'enemy-bullet';
-            const bulletX = enemyX + 30 - 2.5;
-            const bulletY = enemyY + 30 - 5;
-            bullet.style.left = bulletX + 'px';
-            bullet.style.top = bulletY + 'px';
-            gameLayer.appendChild(bullet);
-
-            const dx = playerX + CONFIG.PLAYER_SIZE / 2 - (enemyX + 30);
-            const dy = playerY + CONFIG.PLAYER_SIZE / 2 - (enemyY + 30);
-            const angle = Math.atan2(dy, dx);
-            const vx = Math.cos(angle) * CONFIG.ENEMY_BULLET_SPEED;
-            const vy = Math.sin(angle) * CONFIG.ENEMY_BULLET_SPEED;
-
-            enemyBullets.push({ element: bullet, x: bulletX, y: bulletY, vx, vy });
-            playSound('enemyShot');
-        }
-
-        function moveEnemyBullets() {
-            if (!gameRunning || !player) return;
-            const playerRect = player.getBoundingClientRect();
-            for (let i = enemyBullets.length - 1; i >= 0; i--) {
-                const bullet = enemyBullets[i];
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-                bullet.element.style.left = bullet.x + 'px';
-                bullet.element.style.top = bullet.y + 'px';
-
-                if (bullet.y > CONFIG.GAME_HEIGHT || bullet.y < 0 || bullet.x < 0 || bullet.x > CONFIG.GAME_WIDTH) {
-                    bullet.element.remove();
-                    enemyBullets.splice(i, 1);
-                    continue;
-                }
-
-                const bulletRect = bullet.element.getBoundingClientRect();
-                if (playerRect.left < bulletRect.right && playerRect.right > bulletRect.left &&
-                    playerRect.top < bulletRect.bottom && playerRect.bottom > bulletRect.top) {
-                    bullet.element.remove();
-                    enemyBullets.splice(i, 1);
-                    handlePlayerHit();
-                }
-            }
-        }
-
-        function spawnEnemy() {
-            if (!gameRunning) return;
-            const enemy = document.createElement('div');
-            const typeRoll = Math.random();
-            let type, className, size = 40;
-            if (typeRoll < 0.33) {
-                type = 'straight';
-                className = 'enemy-straight';
-                size = Math.floor(Math.random() * 41) + 20;
-                enemy.style.width = size + 'px';
-                enemy.style.height = size + 'px';
-            } else if (typeRoll < 0.66) {
-                type = 'arc';
-                className = 'enemy-arc';
-            } else {
-                type = 'zigzag';
-                className = 'enemy-zigzag';
-            }
-            enemy.className = className;
-
-            const startX = Math.random() * (CONFIG.GAME_WIDTH - size);
-            enemy.style.left = startX + 'px';
-            enemy.style.top = '-40px';
-            gameLayer.appendChild(enemy);
-
-            const enemyObj = {
-                element: enemy,
-                type,
-                x: startX,
-                y: -40,
-                angle: 0,
-                hits: 3,
-                rotation: 0,
-                rotationSpeed: (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1),
-                shootInterval: type === 'arc' ? setInterval(() => {
-                    if (gameRunning && enemies.includes(enemyObj)) createEnemyBullet(parseFloat(enemy.style.left), parseFloat(enemy.style.top));
-                }, 1500) : null
-            };
-            enemies.push(enemyObj);
-        }
-
-        function spawnEnergy() {
-            if (!gameRunning) return;
-            const energy = document.createElement('div');
-            energy.className = 'energy';
-            const startX = Math.random() * (CONFIG.GAME_WIDTH - 30);
-            energy.style.left = startX + 'px';
-            energy.style.top = '-30px';
-            gameLayer.appendChild(energy);
-            energyItems.push({ element: energy, x: startX, y: -30 });
-        }
-
-        function createDebris(x, y, isPlayer = false) {
-            const count = isPlayer ? CONFIG.MAX_DEBRIS : CONFIG.MAX_DEBRIS / 2;
-            const className = isPlayer ? 'player-debris' : 'debris';
-            const vxRange = isPlayer ? 20 : 12;
-            const vyRange = isPlayer ? 15 : 8;
-            for (let i = 0; i < count && debris.length < CONFIG.MAX_DEBRIS; i++) {
-                const piece = document.createElement('div');
-                piece.className = className;
-                piece.style.left = x + 'px';
-                piece.style.top = y + 'px';
-                gameLayer.appendChild(piece);
-                debris.push({ element: piece, x, y, vx: (Math.random() - 0.5) * vxRange, vy: -Math.random() * vyRange });
-            }
-        }
-
-        function createSparks(x, y) {
-            for (let i = 0; i < CONFIG.MAX_SPARKS && sparks.length < CONFIG.MAX_SPARKS; i++) {
-                const spark = document.createElement('div');
-                spark.className = 'spark';
-                spark.style.left = x + 'px';
-                spark.style.top = y + 'px';
-                gameLayer.appendChild(spark);
-                sparks.push({ element: spark, x, y, vx: (Math.random() - 0.5) * 6, vy: -Math.random() * 4, lifetime: 20 });
-            }
-        }
-
-        function moveDebris() {
-            for (let i = debris.length - 1; i >= 0; i--) {
-                const piece = debris[i];
-                piece.vy += 0.2;
-                piece.x += piece.vx;
-                piece.y += piece.vy;
-                piece.element.style.left = piece.x + 'px';
-                piece.element.style.top = piece.y + 'px';
-                if (piece.y > CONFIG.GAME_HEIGHT) {
-                    piece.element.remove();
-                    debris.splice(i, 1);
-                }
-            }
-        }
-
-        function moveSparks() {
-            for (let i = sparks.length - 1; i >= 0; i--) {
-                const spark = sparks[i];
-                spark.x += spark.vx;
-                spark.y += spark.vy;
-                spark.lifetime--;
-                spark.element.style.left = spark.x + 'px';
-                spark.element.style.top = spark.y + 'px';
-                if (spark.lifetime <= 0 || spark.y > CONFIG.GAME_HEIGHT) {
-                    spark.element.remove();
-                    sparks.splice(i, 1);
-                }
-            }
-        }
-
-        function handlePlayerHit() {
-            playerLives--;
-            updateLives();
-            player.classList.add('shaking');
-            setTimeout(() => player.classList.remove('shaking'), CONFIG.SHAKE_DURATION);
-            if (playerLives > 0) {
-                playSound('playerHit');
-            } else {
-                createDebris(playerX + CONFIG.PLAYER_SIZE / 2, playerY + CONFIG.PLAYER_SIZE / 2, true);
-                playSound('explodePlayer');
-                player.remove();
-                player = null;
-                animateExplosionThenEnd();
-            }
-        }
-
-        function animateExplosionThenEnd() {
-            console.log('Starting explosion animation');
-            gameRunning = false;
-            if (gameFrameId) {
-                cancelAnimationFrame(gameFrameId);
-                gameFrameId = null;
-            }
-            clearInterval(bulletInterval);
-            clearInterval(enemyInterval);
-            clearInterval(energyInterval);
-            enemies.forEach(clearEnemy);
-
-            const startTime = performance.now();
-            function explosionLoop(currentTime) {
-                moveDebris();
-                if (currentTime - startTime < CONFIG.EXPLOSION_DURATION && debris.length > 0) {
-                    explosionFrameId = requestAnimationFrame(explosionLoop);
-                } else {
-                    console.log('Explosion animation finished');
-                    if (explosionFrameId) {
-                        cancelAnimationFrame(explosionFrameId);
-                        explosionFrameId = null;
-                    }
-                    endGame();
-                }
-            }
+        const startTime = performance.now();
+        function explosionLoop(currentTime) {
+          moveDebris();
+          if (
+            currentTime - startTime < CONFIG.EXPLOSION_DURATION &&
+            debris.length > 0
+          ) {
             explosionFrameId = requestAnimationFrame(explosionLoop);
+          } else {
+            console.log("Explosion animation finished");
+            if (explosionFrameId) {
+              cancelAnimationFrame(explosionFrameId);
+              explosionFrameId = null;
+            }
+            endGame();
+          }
         }
+        explosionFrameId = requestAnimationFrame(explosionLoop);
+      }
 
-        function moveEnemies() {
-            if (!gameRunning || !player) return;
-            const playerRect = player.getBoundingClientRect();
-            const toRemove = { enemies: [], bullets: [] };
+      function moveEnemies() {
+        if (!gameRunning || !player) return;
+        const playerRect = player.getBoundingClientRect();
+        const toRemove = { enemies: [], bullets: [] };
 
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                const enemy = enemies[i];
-                if (enemy.type === 'straight') {
-                    enemy.y += 0.75 * enemySpeedMultiplier;
-                    enemy.rotation += enemy.rotationSpeed;
-                    enemy.element.style.transform = `rotate(${enemy.rotation}deg)`;
-                } else if (enemy.type === 'arc') {
-                    enemy.angle += 0.03;
-                    enemy.x += (enemy.x < CONFIG.GAME_WIDTH / 2 ? 0.5 : -0.5) * enemySpeedMultiplier;
-                    enemy.y += (0.75 + Math.sin(enemy.angle) * 1.5) * enemySpeedMultiplier;
-                } else if (enemy.type === 'zigzag') {
-                    enemy.angle += 0.05;
-                    enemy.x += Math.cos(enemy.angle) * 2.5 * enemySpeedMultiplier;
-                    enemy.y += 0.75 * enemySpeedMultiplier;
-                }
+        for (let i = enemies.length - 1; i >= 0; i--) {
+          const enemy = enemies[i];
+          if (enemy.type === "straight") {
+            enemy.y += 0.75 * enemySpeedMultiplier;
+            enemy.rotation += enemy.rotationSpeed;
+            enemy.element.style.transform = `rotate(${enemy.rotation}deg)`;
+          } else if (enemy.type === "arc") {
+            enemy.angle += 0.03;
+            enemy.x +=
+              (enemy.x < CONFIG.GAME_WIDTH / 2 ? 0.5 : -0.5) *
+              enemySpeedMultiplier;
+            enemy.y +=
+              (0.75 + Math.sin(enemy.angle) * 1.5) * enemySpeedMultiplier;
+          } else if (enemy.type === "zigzag") {
+            enemy.angle += 0.05;
+            enemy.x += Math.cos(enemy.angle) * 2.5 * enemySpeedMultiplier;
+            enemy.y += 0.75 * enemySpeedMultiplier;
+          }
 
-                enemy.element.style.left = enemy.x + 'px';
-                enemy.element.style.top = enemy.y + 'px';
-                enemy.x = parseFloat(enemy.element.style.left);
-                enemy.y = parseFloat(enemy.element.style.top);
+          enemy.element.style.left = enemy.x + "px";
+          enemy.element.style.top = enemy.y + "px";
+          enemy.x = parseFloat(enemy.element.style.left);
+          enemy.y = parseFloat(enemy.element.style.top);
 
-                if (enemy.y > CONFIG.GAME_HEIGHT) {
-                    const penalty = enemy.type === 'straight' ? -1 : enemy.type === 'arc' ? -2 : -3;
-                    totalScore += penalty;
-                    showText(penalty, enemy.x + 20, CONFIG.GAME_HEIGHT - 20, 'penalty-text');
-                    updateScore();
-                    toRemove.enemies.push(i);
-                    continue;
-                }
-
-                const enemyRect = enemy.element.getBoundingClientRect();
-                if (playerRect.left < enemyRect.right && playerRect.right > enemyRect.left &&
-                    playerRect.top < enemyRect.bottom && playerRect.bottom > enemyRect.top) {
-                    handlePlayerHit();
-                    toRemove.enemies.push(i);
-                    continue;
-                }
-
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    const bullet = bullets[j];
-                    const bulletRect = bullet.element.getBoundingClientRect();
-                    if (bulletRect.left < enemyRect.right && bulletRect.right > enemyRect.left &&
-                        bulletRect.top < enemyRect.bottom && bulletRect.bottom > enemyRect.top) {
-                        if (bullet.isBomb) {
-                            createDebris(enemy.x, enemy.y);
-                            playSound(enemy.type === 'arc' ? 'explodeArc' : 'explode');
-                            showText('+3', enemy.x + 20, enemy.y + 20, 'score-text', 20);
-                            bombKills++;
-                            totalScore += 3;
-                            toRemove.enemies.push(i);
-                            toRemove.bullets.push(j);
-                            updateScore();
-                            break;
-                        } else {
-                            enemy.hits--;
-                            createSparks(enemy.x, enemy.y);
-                            playSound('bulletHit');
-                            enemy.element.classList.add('shaking');
-                            setTimeout(() => enemy.element.classList.remove('shaking'), CONFIG.SHAKE_DURATION);
-                            toRemove.bullets.push(j);
-                            if (enemy.hits <= 0) {
-                                createDebris(enemy.x, enemy.y);
-                                playSound(enemy.type === 'arc' ? 'explodeArc' : 'explode');
-                                showText('+1', enemy.x + 20, enemy.y + 20, 'score-text', 20);
-                                bulletKills++;
-                                totalScore += 1;
-                                toRemove.enemies.push(i);
-                                updateScore();
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            for (let i = energyItems.length - 1; i >= 0; i--) {
-                const energy = energyItems[i];
-                energy.y += 1;
-                energy.element.style.top = energy.y + 'px';
-                if (energy.y > CONFIG.GAME_HEIGHT) {
-                    energy.element.remove();
-                    energyItems.splice(i, 1);
-                } else {
-                    const energyRect = energy.element.getBoundingClientRect();
-                    if (playerRect.left < energyRect.right && playerRect.right > energyRect.left &&
-                        playerRect.top < energyRect.bottom && playerRect.bottom > energyRect.top) {
-                        playSound('energyPickup');
-                        boostFireRate();
-                        energy.element.remove();
-                        energyItems.splice(i, 1);
-                    }
-                }
-            }
-
-            toRemove.enemies.forEach(i => { clearEnemy(enemies[i]); enemies.splice(i, 1); });
-            toRemove.bullets.forEach(j => { bullets[j].element.remove(); bullets.splice(j, 1); });
-        }
-
-        function clearEnemy(enemy) {
-            if (enemy.shootInterval) clearInterval(enemy.shootInterval);
-            enemy.element.remove();
-        }
-
-        function endGame() {
-            console.log('Ending game');
-            gameRunning = false;
-            if (gameFrameId) {
-                cancelAnimationFrame(gameFrameId);
-                gameFrameId = null;
-            }
-            clearInterval(bulletInterval);
-            clearInterval(enemyInterval);
-            clearInterval(energyInterval);
-            enemies.forEach(clearEnemy);
-            bullets.forEach(b => b.element.remove());
-            enemyBullets.forEach(b => b.element.remove());
-            energyItems.forEach(e => e.element.remove());
-            debris.forEach(d => d.element.remove());
-            sparks.forEach(s => s.element.remove());
-            bullets.length = enemies.length = energyItems.length = enemyBullets.length = debris.length = sparks.length = 0;
-            finalScoreDisplay.textContent = totalScore;
-            scoreComparison.textContent = totalScore > highScore ?
-                'New High Score!' :
-                totalScore - highScore >= 0 ?
-                `You beat the High Score by ${totalScore - highScore}!` :
-                `You were ${highScore - totalScore} below the High Score.`;
-            if (totalScore > highScore) {
-                highScore = totalScore;
-                localStorage.setItem('highScore', highScore);
-            }
-            gameOverDisplay.style.display = 'block';
-            backgroundMusic.pause();
-        }
-
-        function initGame(isRestart = false) {
-            console.log('Initializing game, isRestart:', isRestart);
-            if (isRestart) {
-                if (gameFrameId) {
-                    cancelAnimationFrame(gameFrameId);
-                    gameFrameId = null;
-                }
-                if (explosionFrameId) {
-                    cancelAnimationFrame(explosionFrameId);
-                    explosionFrameId = null;
-                }
-                bullets.forEach(b => b.element.remove());
-                enemies.forEach(clearEnemy);
-                energyItems.forEach(e => e.element.remove());
-                enemyBullets.forEach(b => b.element.remove());
-                debris.forEach(d => d.element.remove());
-                sparks.forEach(s => s.element.remove());
-                player?.remove();
-                bullets.length = enemies.length = energyItems.length = enemyBullets.length = debris.length = sparks.length = 0;
-                bulletKills = bombKills = totalScore = bulletCounter = 0;
-                currentLevel = 1;
-                levelThreshold = CONFIG.LEVEL_THRESHOLD_BASE;
-                enemySpeedMultiplier = bulletSpeedMultiplier = 1;
-                clearInterval(bulletInterval);
-                clearInterval(enemyInterval);
-                clearInterval(energyInterval);
-                bulletInterval = enemyInterval = energyInterval = null;
-            }
-
-            gameRunning = true;
-            initPlayer();
+          if (enemy.y > CONFIG.GAME_HEIGHT) {
+            const penalty =
+              enemy.type === "straight" ? -1 : enemy.type === "arc" ? -2 : -3;
+            totalScore += penalty;
+            showText(
+              penalty,
+              enemy.x + 20,
+              CONFIG.GAME_HEIGHT - 20,
+              "penalty-text"
+            );
             updateScore();
-            gameOverDisplay.style.display = startScreenDisplay.style.display = 'none';
-            setBulletInterval(CONFIG.BULLET_INTERVAL);
-            enemyInterval = setInterval(() => { if (gameRunning) spawnEnemy(); }, CONFIG.ENEMY_SPAWN_INTERVAL);
-            energyInterval = setInterval(() => { if (gameRunning) spawnEnergy(); }, CONFIG.ENERGY_SPAWN_INTERVAL);
+            toRemove.enemies.push(i);
+            continue;
+          }
 
-            if (!isMusicPlaying) {
-                backgroundMusic.play().catch(error => console.error('Ошибка музыки:', error));
-                isMusicPlaying = true;
-                musicToggleButton.textContent = 'Mute Music';
+          const enemyRect = enemy.element.getBoundingClientRect();
+          if (
+            playerRect.left < enemyRect.right &&
+            playerRect.right > enemyRect.left &&
+            playerRect.top < enemyRect.bottom &&
+            playerRect.bottom > enemyRect.top
+          ) {
+            handlePlayerHit();
+            toRemove.enemies.push(i);
+            continue;
+          }
+
+          for (let j = bullets.length - 1; j >= 0; j--) {
+            const bullet = bullets[j];
+            const bulletRect = bullet.element.getBoundingClientRect();
+            if (
+              bulletRect.left < enemyRect.right &&
+              bulletRect.right > enemyRect.left &&
+              bulletRect.top < enemyRect.bottom &&
+              bulletRect.bottom > enemyRect.top
+            ) {
+              if (bullet.isBomb) {
+                createDebris(enemy.x, enemy.y);
+                playSound(enemy.type === "arc" ? "explodeArc" : "explode");
+                showText("+3", enemy.x + 20, enemy.y + 20, "score-text", 20);
+                bombKills++;
+                totalScore += 3;
+                toRemove.enemies.push(i);
+                toRemove.bullets.push(j);
+                updateScore();
+                break;
+              } else {
+                enemy.hits--;
+                createSparks(enemy.x, enemy.y);
+                playSound("bulletHit");
+                enemy.element.classList.add("shaking");
+                setTimeout(
+                  () => enemy.element.classList.remove("shaking"),
+                  CONFIG.SHAKE_DURATION
+                );
+                toRemove.bullets.push(j);
+                if (enemy.hits <= 0) {
+                  createDebris(enemy.x, enemy.y);
+                  playSound(enemy.type === "arc" ? "explodeArc" : "explode");
+                  showText("+1", enemy.x + 20, enemy.y + 20, "score-text", 20);
+                  bulletKills++;
+                  totalScore += 1;
+                  toRemove.enemies.push(i);
+                  updateScore();
+                }
+                break;
+              }
             }
-            console.log('Starting game loop');
-            if (gameFrameId) cancelAnimationFrame(gameFrameId);
-            gameFrameId = requestAnimationFrame(gameLoop);
+          }
         }
 
-        function startGame() {
-            initGame(false);
-        }
-
-        function restartGame() {
-            initGame(true);
-        }
-
-        function gameLoop() {
-            if (!gameRunning) {
-                console.log('Game loop stopped');
-                return;
+        for (let i = energyItems.length - 1; i >= 0; i--) {
+          const energy = energyItems[i];
+          energy.y += 1;
+          energy.element.style.top = energy.y + "px";
+          if (energy.y > CONFIG.GAME_HEIGHT) {
+            energy.element.remove();
+            energyItems.splice(i, 1);
+          } else {
+            const energyRect = energy.element.getBoundingClientRect();
+            if (
+              playerRect.left < energyRect.right &&
+              playerRect.right > energyRect.left &&
+              playerRect.top < energyRect.bottom &&
+              playerRect.bottom > energyRect.top
+            ) {
+              playSound("energyPickup");
+              boostFireRate();
+              energy.element.remove();
+              energyItems.splice(i, 1);
             }
-            try {
-                movePlayer();
-                moveBullets();
-                moveEnemies();
-                moveEnemyBullets();
-                moveDebris();
-                moveSparks();
-                gameFrameId = requestAnimationFrame(gameLoop);
-            } catch (error) {
-                console.error('Ошибка в игровом цикле:', error);
-                endGame();
-            }
+          }
         }
+
+        toRemove.enemies.forEach((i) => {
+          clearEnemy(enemies[i]);
+          enemies.splice(i, 1);
+        });
+        toRemove.bullets.forEach((j) => {
+          bullets[j].element.remove();
+          bullets.splice(j, 1);
+        });
+      }
+
+      function clearEnemy(enemy) {
+        if (enemy.shootInterval) clearInterval(enemy.shootInterval);
+        enemy.element.remove();
+      }
+
+      function endGame() {
+        console.log("Ending game");
+        gameRunning = false;
+        if (gameFrameId) {
+          cancelAnimationFrame(gameFrameId);
+          gameFrameId = null;
+        }
+        clearInterval(bulletInterval);
+        clearInterval(enemyInterval);
+        clearInterval(energyInterval);
+        enemies.forEach(clearEnemy);
+        bullets.forEach((b) => b.element.remove());
+        enemyBullets.forEach((b) => b.element.remove());
+        energyItems.forEach((e) => e.element.remove());
+        debris.forEach((d) => d.element.remove());
+        sparks.forEach((s) => s.element.remove());
+        bullets.length =
+          enemies.length =
+          energyItems.length =
+          enemyBullets.length =
+          debris.length =
+          sparks.length =
+            0;
+        finalScoreDisplay.textContent = totalScore;
+        scoreComparison.textContent =
+          totalScore > highScore
+            ? "New High Score!"
+            : totalScore - highScore >= 0
+            ? `You beat the High Score by ${totalScore - highScore}!`
+            : `You were ${highScore - totalScore} below the High Score.`;
+        if (totalScore > highScore) {
+          highScore = totalScore;
+          localStorage.setItem("highScore", highScore);
+        }
+        gameOverDisplay.style.display = "block";
+        backgroundMusic.pause();
+      }
+
+      function initGame(isRestart = false) {
+        console.log("Initializing game, isRestart:", isRestart);
+        if (isRestart) {
+          if (gameFrameId) {
+            cancelAnimationFrame(gameFrameId);
+            gameFrameId = null;
+          }
+          if (explosionFrameId) {
+            cancelAnimationFrame(explosionFrameId);
+            explosionFrameId = null;
+          }
+          bullets.forEach((b) => b.element.remove());
+          enemies.forEach(clearEnemy);
+          energyItems.forEach((e) => e.element.remove());
+          enemyBullets.forEach((b) => b.element.remove());
+          debris.forEach((d) => d.element.remove());
+          sparks.forEach((s) => s.element.remove());
+          player?.remove();
+          bullets.length =
+            enemies.length =
+            energyItems.length =
+            enemyBullets.length =
+            debris.length =
+            sparks.length =
+              0;
+          bulletKills = bombKills = totalScore = bulletCounter = 0;
+          currentLevel = 1;
+          levelThreshold = CONFIG.LEVEL_THRESHOLD_BASE;
+          enemySpeedMultiplier = bulletSpeedMultiplier = 1;
+          clearInterval(bulletInterval);
+          clearInterval(enemyInterval);
+          clearInterval(energyInterval);
+          bulletInterval = enemyInterval = energyInterval = null;
+        }
+
+        gameRunning = true;
+        initPlayer();
+        updateScore();
+        gameOverDisplay.style.display = startScreenDisplay.style.display =
+          "none";
+        setBulletInterval(CONFIG.BULLET_INTERVAL);
+        enemyInterval = setInterval(() => {
+          if (gameRunning) spawnEnemy();
+        }, CONFIG.ENEMY_SPAWN_INTERVAL);
+        energyInterval = setInterval(() => {
+          if (gameRunning) spawnEnergy();
+        }, CONFIG.ENERGY_SPAWN_INTERVAL);
+
+        if (!isMusicPlaying) {
+          backgroundMusic
+            .play()
+            .catch((error) => console.error("Ошибка музыки:", error));
+          isMusicPlaying = true;
+          musicToggleButton.textContent = "Mute Music";
+        }
+        console.log("Starting game loop");
+        if (gameFrameId) cancelAnimationFrame(gameFrameId);
+        gameFrameId = requestAnimationFrame(gameLoop);
+      }
+
+      function startGame() {
+        initGame(false);
+      }
+
+      function restartGame() {
+        initGame(true);
+      }
+
+      function gameLoop() {
+        if (!gameRunning) {
+          console.log("Game loop stopped");
+          return;
+        }
+        try {
+          movePlayer();
+          moveBullets();
+          moveEnemies();
+          moveEnemyBullets();
+          moveDebris();
+          moveSparks();
+          gameFrameId = requestAnimationFrame(gameLoop);
+        } catch (error) {
+          console.error("Ошибка в игровом цикле:", error);
+          endGame();
+        }
+      }
     </script>
-</body>
+  </body>
 </html>
