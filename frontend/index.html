@@ -389,6 +389,8 @@
         fireTail,
         vx = 0,
         vy = 0;
+      let touchX = null;
+      let touchY = null;
       let bulletCounter = 0,
         bulletInterval,
         enemyInterval,
@@ -515,6 +517,23 @@
       document.addEventListener("keydown", (e) => (keys[e.key] = true));
       document.addEventListener("keyup", (e) => (keys[e.key] = false));
 
+      document.addEventListener("touchstart", (e) => {
+        const touch = e.touches[0];
+        touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
+        touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
+      });
+
+      document.addEventListener("touchmove", (e) => {
+        const touch = e.touches[0];
+        touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
+        touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
+      });
+
+      document.addEventListener("touchend", () => {
+        touchX = null;
+        touchY = null;
+      });
+
       function movePlayer() {
         if (!gameRunning) return;
         const halfHeight = CONFIG.GAME_HEIGHT / 2;
@@ -523,6 +542,18 @@
         if (keys["ArrowRight"]) vx += CONFIG.ACCELERATION;
         if (keys["ArrowUp"]) vy -= CONFIG.ACCELERATION;
         if (keys["ArrowDown"]) vy += CONFIG.ACCELERATION;
+
+        // Добавляем тач-управление
+        if (touchX !== null && touchY !== null) {
+          const dx = touchX - playerX;
+          const dy = touchY - playerY;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          if (length > 10) {
+            // Чувствительность
+            vx += (dx / length) * CONFIG.ACCELERATION;
+            vy += (dy / length) * CONFIG.ACCELERATION;
+          }
+        }
 
         vx = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx));
         vy = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy));
