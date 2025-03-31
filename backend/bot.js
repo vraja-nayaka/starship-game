@@ -10,14 +10,18 @@ bot.command("start", (ctx) => {
 });
 
 bot.on("callback_query", async (ctx) => {
-  console.log("user started the game", ctx.from.username);
-  // Explicit usage
-  await ctx.telegram.answerCbQuery(ctx.callbackQuery.id, undefined, {
-    url: "https://vraja-nayaka.github.io/starship-game/",
-  });
+  try {
+    console.log("user started the game", ctx.from.username);
+    // Explicit usage
+    await ctx.telegram.answerCbQuery(ctx.callbackQuery.id, undefined, {
+      url: "https://vraja-nayaka.github.io/starship-game/",
+    });
 
-  // Using context shortcut
-  await ctx.answerCbQuery();
+    // Using context shortcut
+    await ctx.answerCbQuery();
+  } catch (error) {
+    console.error("Error handling callback_query:", error);
+  }
 });
 
 bot.launch();

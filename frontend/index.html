@@ -15,10 +15,11 @@
         height: 100vh;
       }
       #gameCanvas {
-        width: 600px;
-        height: 800px;
+        width: 100%;
+        height: 100%;
+        max-width: 600px;
+        max-height: 800px;
         position: relative;
-        border: 1px solid #fff;
         overflow: hidden;
         background: transparent;
       }
@@ -352,13 +353,27 @@
       const scoreComparison = document.getElementById("scoreComparison");
       const musicToggleButton = document.getElementById("musicToggle");
 
+      const screenSize = (() => {
+        let tg;
+        try {
+          tg = window.Telegram.WebApp;
+        } catch (_error) {
+          // none
+        }
+
+        return {
+          width: Math.min(tg?.viewportWidth || window.innerWidth, 600),
+          height: Math.min(tg?.viewportHeight || window.innerHeight, 800),
+        };
+      })();
+
       const CONFIG = {
-        GAME_WIDTH: 600,
-        GAME_HEIGHT: 800,
+        GAME_WIDTH: screenSize.width,
+        GAME_HEIGHT: screenSize.height,
         PLAYER_SIZE: 80,
         MAX_LIVES: 3,
-        MAX_SPEED: 5,
-        ACCELERATION: 0.5,
+        MAX_SPEED: 7,
+        ACCELERATION: 0.7,
         FRICTION: 0.9,
         BULLET_INTERVAL: 400,
         ENEMY_SPAWN_INTERVAL: 1000,
@@ -501,8 +516,9 @@
         player.className = "player";
         playerX = CONFIG.GAME_WIDTH / 2 - CONFIG.PLAYER_SIZE / 2;
         playerY = CONFIG.GAME_HEIGHT * 0.75;
-        player.style.left = playerX + "px";
-        player.style.top = playerY + "px";
+
+        player.style.transform = `translate(${playerX}px, ${playerY}px)`;
+
         gameLayer.appendChild(player);
 
         fireTail = document.createElement("div");
@@ -543,22 +559,22 @@
         if (keys["ArrowUp"]) vy -= CONFIG.ACCELERATION;
         if (keys["ArrowDown"]) vy += CONFIG.ACCELERATION;
 
-        // Добавляем тач-управление
         if (touchX !== null && touchY !== null) {
           const dx = touchX - playerX;
           const dy = touchY - playerY;
-          const length = Math.sqrt(dx * dx + dy * dy);
+          const length = Math.hypot(dx, dy);
           if (length > 10) {
-            // Чувствительность
-            vx += (dx / length) * CONFIG.ACCELERATION;
-            vy += (dy / length) * CONFIG.ACCELERATION;
+            vx += (dx / length) * CONFIG.ACCELERATION * 1.5;
+            vy += (dy / length) * CONFIG.ACCELERATION * 1.5;
           }
         }
 
-        vx = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx));
-        vy = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy));
-        vx *= CONFIG.FRICTION;
-        vy *= CONFIG.FRICTION;
+        vx =
+          Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx)) *
+          CONFIG.FRICTION;
+        vy =
+          Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy)) *
+          CONFIG.FRICTION;
 
         playerX = Math.max(
           0,
@@ -568,10 +584,9 @@
           halfHeight,
           Math.min(CONFIG.GAME_HEIGHT - CONFIG.PLAYER_SIZE, playerY + vy)
         );
-        player.style.left = playerX + "px";
-        player.style.top = playerY + "px";
-      }
 
+        player.style.transform = `translate(${playerX}px, ${playerY}px)`;
+      }
       function createBullet() {
         if (!gameRunning) return;
         bulletCounter++;
