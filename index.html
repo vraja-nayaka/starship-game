@@ -17,8 +17,9 @@
       #gameCanvas {
         width: 100%;
         height: 100%;
+        max-width: 600px;
+        max-height: 800px;
         position: relative;
-        border: 1px solid #fff;
         overflow: hidden;
         background: transparent;
       }
@@ -31,14 +32,14 @@
         background: linear-gradient(
           to bottom,
           #0a0a39 0px,
-          /* Темно-синий */ #001e80 400px,
-          /* Синий */ #9c9200 800px,
-          /* Светло-синий */ #001e80 1200px,
-          /* Синий */ #0a0a39 1600px /* Темно-синий */
+          #001e80 400px,
+          #9c9200 800px,
+          #001e80 1200px,
+          #0a0a39 1600px
         );
         background-size: 100% 1600px;
         animation: scrollGradient 10s linear infinite;
-        z-index: 0; /* Самый нижний слой */
+        z-index: 0;
       }
       .background-layer {
         position: absolute;
@@ -50,7 +51,7 @@
         background-size: cover;
         background-repeat: repeat-y;
         animation: scrollBackground 20s linear infinite;
-        z-index: 1; /* Поверх градиента */
+        z-index: 1;
       }
       .game-layer {
         position: absolute;
@@ -58,7 +59,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 2; /* Игровые элементы поверх всего */
+        z-index: 2;
       }
       @keyframes scrollBackground {
         0% {
@@ -84,7 +85,7 @@
         position: absolute;
         border-radius: 5px;
         filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7));
-        z-index: 3; /* Явно выше фона */
+        z-index: 3;
       }
       .fire-tail {
         width: 10px;
@@ -214,23 +215,6 @@
         animation: fadeOut 1s linear forwards;
         z-index: 3;
       }
-      @keyframes shake {
-        0% {
-          transform: translate(0, 0);
-        }
-        25% {
-          transform: translate(4px, 4px);
-        }
-        50% {
-          transform: translate(-4px, -4px);
-        }
-        75% {
-          transform: translate(4px, -4px);
-        }
-        100% {
-          transform: translate(0, 0);
-        }
-      }
       @keyframes fadeOut {
         0% {
           opacity: 1;
@@ -359,10 +343,9 @@
         } catch (_error) {
           // none
         }
-
         return {
-          width: tg?.viewportWidth || window.innerWidth,
-          height: tg?.viewportHeight || window.innerHeight,
+          width: Math.min(tg?.viewportWidth || window.innerWidth, 600),
+          height: Math.min(tg?.viewportHeight || window.innerHeight, 800),
         };
       })();
 
@@ -371,8 +354,8 @@
         GAME_HEIGHT: screenSize.height,
         PLAYER_SIZE: 80,
         MAX_LIVES: 3,
-        MAX_SPEED: 5,
-        ACCELERATION: 0.5,
+        MAX_SPEED: 7,
+        ACCELERATION: 0.7,
         FRICTION: 0.9,
         BULLET_INTERVAL: 400,
         ENEMY_SPAWN_INTERVAL: 1000,
@@ -382,8 +365,8 @@
         BOOST_DURATION: 10000,
         SHAKE_DURATION: 300,
         LEVEL_THRESHOLD_BASE: 10,
-        MAX_DEBRIS: 100,
-        MAX_SPARKS: 15,
+        MAX_DEBRIS: 10,
+        MAX_SPARKS: 5,
         EXPLOSION_DURATION: 1500,
       };
 
@@ -403,8 +386,8 @@
         fireTail,
         vx = 0,
         vy = 0;
-      let touchX = null;
-      let touchY = null;
+      let touchX = null,
+        touchY = null;
       let bulletCounter = 0,
         bulletInterval,
         enemyInterval,
@@ -493,8 +476,7 @@
         const textElement = document.createElement("div");
         textElement.className = className;
         textElement.textContent = text;
-        textElement.style.left = x + "px";
-        textElement.style.top = y + "px";
+        textElement.style.transform = `translate(${x}px, ${y}px)`;
         textElement.style.fontSize = size + "px";
         if (className === "score-text") textElement.style.textShadow = "none";
         gameLayer.appendChild(textElement);
@@ -515,8 +497,7 @@
         player.className = "player";
         playerX = CONFIG.GAME_WIDTH / 2 - CONFIG.PLAYER_SIZE / 2;
         playerY = CONFIG.GAME_HEIGHT * 0.75;
-        player.style.left = playerX + "px";
-        player.style.top = playerY + "px";
+        player.style.transform = `translate(${playerX}px, ${playerY}px)`;
         gameLayer.appendChild(player);
 
         fireTail = document.createElement("div");
@@ -537,11 +518,18 @@
         touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
       });
 
-      document.addEventListener("touchmove", (e) => {
-        const touch = e.touches[0];
-        touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
-        touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
-      });
+      let lastTouchUpdate = 0;
+      document.addEventListener(
+        "touchmove",
+        (e) => {
+          if (Date.now() - lastTouchUpdate < 16) return;
+          lastTouchUpdate = Date.now();
+          const touch = e.touches[0];
+          touchX = touch.clientX - canvas.offsetLeft - CONFIG.PLAYER_SIZE / 2;
+          touchY = touch.clientY - canvas.offsetTop - CONFIG.PLAYER_SIZE / 2;
+        },
+        { passive: true }
+      );
 
       document.addEventListener("touchend", () => {
         touchX = null;
@@ -557,22 +545,22 @@
         if (keys["ArrowUp"]) vy -= CONFIG.ACCELERATION;
         if (keys["ArrowDown"]) vy += CONFIG.ACCELERATION;
 
-        // Добавляем тач-управление
         if (touchX !== null && touchY !== null) {
           const dx = touchX - playerX;
           const dy = touchY - playerY;
-          const length = Math.sqrt(dx * dx + dy * dy);
+          const length = Math.hypot(dx, dy);
           if (length > 10) {
-            // Чувствительность
-            vx += (dx / length) * CONFIG.ACCELERATION;
-            vy += (dy / length) * CONFIG.ACCELERATION;
+            vx += (dx / length) * CONFIG.ACCELERATION * 1.5;
+            vy += (dy / length) * CONFIG.ACCELERATION * 1.5;
           }
         }
 
-        vx = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx));
-        vy = Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy));
-        vx *= CONFIG.FRICTION;
-        vy *= CONFIG.FRICTION;
+        vx =
+          Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vx)) *
+          CONFIG.FRICTION;
+        vy =
+          Math.max(-CONFIG.MAX_SPEED, Math.min(CONFIG.MAX_SPEED, vy)) *
+          CONFIG.FRICTION;
 
         playerX = Math.max(
           0,
@@ -582,8 +570,7 @@
           halfHeight,
           Math.min(CONFIG.GAME_HEIGHT - CONFIG.PLAYER_SIZE, playerY + vy)
         );
-        player.style.left = playerX + "px";
-        player.style.top = playerY + "px";
+        player.style.transform = `translate(${playerX}px, ${playerY}px)`;
       }
 
       function createBullet() {
@@ -593,27 +580,36 @@
         if (isBomb) {
           const bomb = document.createElement("div");
           bomb.className = "bomb";
-          bomb.style.left = playerX + 32.5 + "px";
-          bomb.style.top = playerY - 25 + "px";
+          const bombX = playerX + 32.5;
+          const bombY = playerY - 25;
+          bomb.style.transform = `translate(${bombX}px, ${bombY}px)`;
           gameLayer.appendChild(bomb);
-          bullets.push({ element: bomb, y: playerY - 25, isBomb: true });
+          bullets.push({ element: bomb, x: bombX, y: bombY, isBomb: true });
           playSound("bomb");
         } else {
           const bulletLeft = document.createElement("div");
           bulletLeft.className = "bullet";
-          bulletLeft.style.left = playerX + 10 + "px";
-          bulletLeft.style.top = playerY - 10 + "px";
+          const bulletLeftX = playerX + 10;
+          const bulletLeftY = playerY - 10;
+          bulletLeft.style.transform = `translate(${bulletLeftX}px, ${bulletLeftY}px)`;
           gameLayer.appendChild(bulletLeft);
-          bullets.push({ element: bulletLeft, y: playerY - 10, isBomb: false });
+          bullets.push({
+            element: bulletLeft,
+            x: bulletLeftX,
+            y: bulletLeftY,
+            isBomb: false,
+          });
 
           const bulletRight = document.createElement("div");
           bulletRight.className = "bullet";
-          bulletRight.style.left = playerX + 67 + "px";
-          bulletRight.style.top = playerY - 10 + "px";
+          const bulletRightX = playerX + 67;
+          const bulletRightY = playerY - 10;
+          bulletRight.style.transform = `translate(${bulletRightX}px, ${bulletRightY}px)`;
           gameLayer.appendChild(bulletRight);
           bullets.push({
             element: bulletRight,
-            y: playerY - 10,
+            x: bulletRightX,
+            y: bulletRightY,
             isBomb: false,
           });
           playSound("laser");
@@ -642,7 +638,9 @@
         if (!gameRunning) return;
         for (let i = bullets.length - 1; i >= 0; i--) {
           bullets[i].y -= CONFIG.BULLET_SPEED;
-          bullets[i].element.style.top = bullets[i].y + "px";
+          bullets[
+            i
+          ].element.style.transform = `translate(${bullets[i].x}px, ${bullets[i].y}px)`;
           if (bullets[i].y < 0) {
             bullets[i].element.remove();
             bullets.splice(i, 1);
@@ -655,8 +653,7 @@
         bullet.className = "enemy-bullet";
         const bulletX = enemyX + 30 - 2.5;
         const bulletY = enemyY + 30 - 5;
-        bullet.style.left = bulletX + "px";
-        bullet.style.top = bulletY + "px";
+        bullet.style.transform = `translate(${bulletX}px, ${bulletY}px)`;
         gameLayer.appendChild(bullet);
 
         const dx = playerX + CONFIG.PLAYER_SIZE / 2 - (enemyX + 30);
@@ -676,8 +673,7 @@
           const bullet = enemyBullets[i];
           bullet.x += bullet.vx;
           bullet.y += bullet.vy;
-          bullet.element.style.left = bullet.x + "px";
-          bullet.element.style.top = bullet.y + "px";
+          bullet.element.style.transform = `translate(${bullet.x}px, ${bullet.y}px)`;
 
           if (
             bullet.y > CONFIG.GAME_HEIGHT ||
@@ -690,6 +686,7 @@
             continue;
           }
 
+          // ! TODO
           const bulletRect = bullet.element.getBoundingClientRect();
           if (
             playerRect.left < bulletRect.right &&
@@ -727,15 +724,15 @@
         enemy.className = className;
 
         const startX = Math.random() * (CONFIG.GAME_WIDTH - size);
-        enemy.style.left = startX + "px";
-        enemy.style.top = "-40px";
+        const startY = -40;
+        enemy.style.transform = `translate(${startX}px, ${startY}px)`;
         gameLayer.appendChild(enemy);
 
         const enemyObj = {
           element: enemy,
           type,
           x: startX,
-          y: -40,
+          y: startY,
           angle: 0,
           hits: 3,
           rotation: 0,
@@ -745,10 +742,7 @@
             type === "arc"
               ? setInterval(() => {
                   if (gameRunning && enemies.includes(enemyObj))
-                    createEnemyBullet(
-                      parseFloat(enemy.style.left),
-                      parseFloat(enemy.style.top)
-                    );
+                    createEnemyBullet(enemyObj.x, enemyObj.y);
                 }, 1500)
               : null,
         };
@@ -760,10 +754,10 @@
         const energy = document.createElement("div");
         energy.className = "energy";
         const startX = Math.random() * (CONFIG.GAME_WIDTH - 30);
-        energy.style.left = startX + "px";
-        energy.style.top = "-30px";
+        const startY = -30;
+        energy.style.transform = `translate(${startX}px, ${startY}px)`;
         gameLayer.appendChild(energy);
-        energyItems.push({ element: energy, x: startX, y: -30 });
+        energyItems.push({ element: energy, x: startX, y: startY });
       }
 
       function createDebris(x, y, isPlayer = false) {
@@ -774,8 +768,7 @@
         for (let i = 0; i < count && debris.length < CONFIG.MAX_DEBRIS; i++) {
           const piece = document.createElement("div");
           piece.className = className;
-          piece.style.left = x + "px";
-          piece.style.top = y + "px";
+          piece.style.transform = `translate(${x}px, ${y}px)`;
           gameLayer.appendChild(piece);
           debris.push({
             element: piece,
@@ -795,8 +788,7 @@
         ) {
           const spark = document.createElement("div");
           spark.className = "spark";
-          spark.style.left = x + "px";
-          spark.style.top = y + "px";
+          spark.style.transform = `translate(${x}px, ${y}px)`;
           gameLayer.appendChild(spark);
           sparks.push({
             element: spark,
@@ -815,8 +807,7 @@
           piece.vy += 0.2;
           piece.x += piece.vx;
           piece.y += piece.vy;
-          piece.element.style.left = piece.x + "px";
-          piece.element.style.top = piece.y + "px";
+          piece.element.style.transform = `translate(${piece.x}px, ${piece.y}px)`;
           if (piece.y > CONFIG.GAME_HEIGHT) {
             piece.element.remove();
             debris.splice(i, 1);
@@ -830,8 +821,7 @@
           spark.x += spark.vx;
           spark.y += spark.vy;
           spark.lifetime--;
-          spark.element.style.left = spark.x + "px";
-          spark.element.style.top = spark.y + "px";
+          spark.element.style.transform = `translate(${spark.x}px, ${spark.y}px)`;
           if (spark.lifetime <= 0 || spark.y > CONFIG.GAME_HEIGHT) {
             spark.element.remove();
             sparks.splice(i, 1);
@@ -863,7 +853,6 @@
       }
 
       function animateExplosionThenEnd() {
-        console.log("Starting explosion animation");
         gameRunning = false;
         if (gameFrameId) {
           cancelAnimationFrame(gameFrameId);
@@ -883,7 +872,6 @@
           ) {
             explosionFrameId = requestAnimationFrame(explosionLoop);
           } else {
-            console.log("Explosion animation finished");
             if (explosionFrameId) {
               cancelAnimationFrame(explosionFrameId);
               explosionFrameId = null;
@@ -904,7 +892,7 @@
           if (enemy.type === "straight") {
             enemy.y += 0.75 * enemySpeedMultiplier;
             enemy.rotation += enemy.rotationSpeed;
-            enemy.element.style.transform = `rotate(${enemy.rotation}deg)`;
+            enemy.element.style.transform = `translate(${enemy.x}px, ${enemy.y}px) rotate(${enemy.rotation}deg)`;
           } else if (enemy.type === "arc") {
             enemy.angle += 0.03;
             enemy.x +=
@@ -912,16 +900,13 @@
               enemySpeedMultiplier;
             enemy.y +=
               (0.75 + Math.sin(enemy.angle) * 1.5) * enemySpeedMultiplier;
+            enemy.element.style.transform = `translate(${enemy.x}px, ${enemy.y}px)`;
           } else if (enemy.type === "zigzag") {
             enemy.angle += 0.05;
             enemy.x += Math.cos(enemy.angle) * 2.5 * enemySpeedMultiplier;
             enemy.y += 0.75 * enemySpeedMultiplier;
+            enemy.element.style.transform = `translate(${enemy.x}px, ${enemy.y}px)`;
           }
-
-          enemy.element.style.left = enemy.x + "px";
-          enemy.element.style.top = enemy.y + "px";
-          enemy.x = parseFloat(enemy.element.style.left);
-          enemy.y = parseFloat(enemy.element.style.top);
 
           if (enemy.y > CONFIG.GAME_HEIGHT) {
             const penalty =
@@ -997,7 +982,7 @@
         for (let i = energyItems.length - 1; i >= 0; i--) {
           const energy = energyItems[i];
           energy.y += 1;
-          energy.element.style.top = energy.y + "px";
+          energy.element.style.transform = `translate(${energy.x}px, ${energy.y}px)`;
           if (energy.y > CONFIG.GAME_HEIGHT) {
             energy.element.remove();
             energyItems.splice(i, 1);
@@ -1033,7 +1018,6 @@
       }
 
       function endGame() {
-        console.log("Ending game");
         gameRunning = false;
         if (gameFrameId) {
           cancelAnimationFrame(gameFrameId);
@@ -1071,7 +1055,6 @@
       }
 
       function initGame(isRestart = false) {
-        console.log("Initializing game, isRestart:", isRestart);
         if (isRestart) {
           if (gameFrameId) {
             cancelAnimationFrame(gameFrameId);
@@ -1125,7 +1108,6 @@
           isMusicPlaying = true;
           musicToggleButton.textContent = "Mute Music";
         }
-        console.log("Starting game loop");
         if (gameFrameId) cancelAnimationFrame(gameFrameId);
         gameFrameId = requestAnimationFrame(gameLoop);
       }
@@ -1139,10 +1121,7 @@
       }
 
       function gameLoop() {
-        if (!gameRunning) {
-          console.log("Game loop stopped");
-          return;
-        }
+        if (!gameRunning) return;
         try {
           movePlayer();
           moveBullets();
