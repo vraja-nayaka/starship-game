@@ -352,6 +352,15 @@
       const scoreComparison = document.getElementById("scoreComparison");
       const musicToggleButton = document.getElementById("musicToggle");
 
+      const width = window.innerWidth;
+const height = window.innerHeight;
+console.log(`Ширина: ${width}, Высота: ${height}`);
+
+const tg = window.Telegram.WebApp;
+
+console.log(`Ширина: ${tg.viewportWidth}, Высота: ${tg.viewportHeight}`);
+console.log(`Стабильная высота: ${tg.viewportStableHeight}`);
+
       const CONFIG = {
         GAME_WIDTH: 600,
         GAME_HEIGHT: 800,
