@@ -352,18 +352,23 @@
       const scoreComparison = document.getElementById("scoreComparison");
       const musicToggleButton = document.getElementById("musicToggle");
 
-      const width = window.innerWidth;
-const height = window.innerHeight;
-console.log(`Ширина: ${width}, Высота: ${height}`);
+      const screenSize = (() => {
+        let tg;
+        try {
+          tg = window.Telegram.WebApp;
+        } catch (_error) {
+          // none
+        }
 
-const tg = window.Telegram.WebApp;
-
-console.log(`Ширина: ${tg.viewportWidth}, Высота: ${tg.viewportHeight}`);
-console.log(`Стабильная высота: ${tg.viewportStableHeight}`);
+        return {
+          width: tg?.viewportWidth || window.innerWidth,
+          height: tg?.viewportHeight || window.innerHeight,
+        };
+      })();
 
       const CONFIG = {
-        GAME_WIDTH: 600,
-        GAME_HEIGHT: 800,
+        GAME_WIDTH: screenSize.width,
+        GAME_HEIGHT: screenSize.height,
         PLAYER_SIZE: 80,
         MAX_LIVES: 3,
         MAX_SPEED: 5,
